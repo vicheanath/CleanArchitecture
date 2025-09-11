@@ -96,7 +96,7 @@ internal sealed class PlaceOrderCommandHandler : ICommandHandler<PlaceOrderComma
             order.AddItem(
                 product.Sku,
                 product.Name,
-                product.Price,
+                product.ProductPricing.RegularPrice,
                 quantity);
         }
 

@@ -2,31 +2,14 @@ using Shared.Primitives;
 
 namespace Clean.Architecture.Domain.Orders;
 
-public sealed class OrderId : IEntityId
+/// <summary>
+/// Represents the order identifier.
+/// </summary>
+/// <param name="Value">The identifier value.</param>
+public sealed record OrderId(Guid Value) : IEntityId
 {
-    public OrderId(Guid value) => Value = value;
-    public Guid Value { get; }
     public static OrderId New() => new(Guid.NewGuid());
     public static OrderId Create(Guid value) => new(value);
-
-    public override bool Equals(object? obj)
-    {
-        return obj is OrderId other && Value.Equals(other.Value);
-    }
-
-    public override int GetHashCode() => Value.GetHashCode();
-
-    public override string ToString() => Value.ToString();
-
-    public static bool operator ==(OrderId? left, OrderId? right)
-    {
-        return Equals(left, right);
-    }
-
-    public static bool operator !=(OrderId? left, OrderId? right)
-    {
-        return !Equals(left, right);
-    }
 }
 
 public sealed class OrderItem : ValueObject

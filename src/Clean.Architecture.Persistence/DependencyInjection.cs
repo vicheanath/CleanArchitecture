@@ -1,10 +1,12 @@
+using Clean.Architecture.Application.Common.Interfaces;
 using Clean.Architecture.Application.Orders;
 using Clean.Architecture.Application.Products;
 using Clean.Architecture.Domain.Inventory;
-using Clean.Architecture.Persistence.Inventory;
-using Clean.Architecture.Persistence.Orders;
-using Clean.Architecture.Persistence.Products;
+using Clean.Architecture.Persistence.Interceptors;
+using Clean.Architecture.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Shared.Messaging;
 
 namespace Clean.Architecture.Persistence;
 
@@ -12,9 +14,27 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddPersistence(this IServiceCollection services)
     {
-        services.AddSingleton<IProductRepository, InMemoryProductRepository>();
-        services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
-        services.AddSingleton<IInventoryItemRepository, InMemoryInventoryItemRepository>();
+        // Register domain event publisher
+        services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
+
+        // Register interceptors
+        services.AddScoped<PublishDomainEventsInterceptor>();
+
+        // Add Entity Framework Core with In-Memory database and interceptors
+        services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+        {
+            var interceptor = serviceProvider.GetRequiredService<PublishDomainEventsInterceptor>();
+            options.UseInMemoryDatabase("CleanArchitectureDb")
+                   .AddInterceptors(interceptor);
+        });
+
+        // Register repositories
+        services.AddScoped<IProductRepository, EfProductRepository>();
+        services.AddScoped<IOrderRepository, EfOrderRepository>();
+        services.AddScoped<IInventoryItemRepository, EfInventoryItemRepository>();
+
+        // Register Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }

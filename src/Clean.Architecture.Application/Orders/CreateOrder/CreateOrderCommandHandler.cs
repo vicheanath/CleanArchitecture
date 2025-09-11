@@ -32,7 +32,7 @@ public class CreateOrderCommandHandler : ICommandHandler<CreateOrderCommand, Cre
             if (product == null)
                 return Result.Failure<CreateOrderResult>(OrderErrors.ProductNotFoundForSku(itemRequest.ProductSku));
 
-            order.AddItem(product.Sku, product.Name, product.Price, itemRequest.Quantity);
+            order.AddItem(product.Sku, product.Name, product.ProductPricing.RegularPrice, itemRequest.Quantity);
         }
 
         await _orderRepository.AddAsync(order, cancellationToken);

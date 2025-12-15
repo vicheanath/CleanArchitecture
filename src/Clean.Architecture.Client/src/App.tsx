@@ -1,11 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryProvider } from "./providers/QueryProvider";
-import { Layout } from "./components/Layout";
-import DashboardPage from "./pages/DashboardPage";
-import { ProductsPage } from "./pages/ProductsPage";
-import { OrdersPage } from "./pages/OrdersPage";
-import { InventoryPage } from "./pages/InventoryPage";
-import { CreateProductPage } from "./pages/CreateProductPage";
+import { QueryProvider } from "./shared/providers/QueryProvider";
+import { Layout } from "./shared/components/Layout";
+import { DashboardPage } from "./features/dashboard";
+import {
+  ProductsPage,
+  CreateProductPage,
+  ProductDetailsPage,
+} from "./features/products";
+import { OrdersPage } from "./features/orders";
+import { InventoryPage } from "./features/inventory";
 
 function App() {
   return (
@@ -16,6 +19,7 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/create" element={<CreateProductPage />} />
+            <Route path="products/:id" element={<ProductDetailsPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="inventory" element={<InventoryPage />} />
           </Route>

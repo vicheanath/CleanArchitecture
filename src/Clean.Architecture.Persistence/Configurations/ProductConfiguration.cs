@@ -1,4 +1,5 @@
 using Clean.Architecture.Domain.Products;
+using Clean.Architecture.Domain.Products.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -39,18 +40,87 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.SortOrder)
             .IsRequired();
 
-        // For now, store a simple price field until we implement proper value object mapping
-        builder.Property<decimal>("Price")
-            .HasColumnType("decimal(18,2)")
-            .HasDefaultValue(0);
+        // Map Pricing value object
+        builder.OwnsOne(p => p.ProductPricing, pricingBuilder =>
+        {
+            pricingBuilder.Property(pr => pr.RegularPrice)
+                .HasColumnName("RegularPrice")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
 
-        // Ignore value objects temporarily - we'll map these properly later
-        builder.Ignore(p => p.ProductPricing);
-        builder.Ignore(p => p.ProductPhysicalAttributes);
-        builder.Ignore(p => p.ProductSeoMetadata);
-        builder.Ignore(p => p.ProductShippingInfo);
-        builder.Ignore(p => p.Images);
-        builder.Ignore(p => p.Tags);
+            pricingBuilder.Property(pr => pr.SalePrice)
+                .HasColumnName("SalePrice")
+                .HasColumnType("decimal(18,2)");
+
+            pricingBuilder.Property(pr => pr.SaleStartDate)
+                .HasColumnName("SaleStartDate");
+
+            pricingBuilder.Property(pr => pr.SaleEndDate)
+                .HasColumnName("SaleEndDate");
+        });
+
+        // Map PhysicalAttributes value object
+        builder.OwnsOne(p => p.ProductPhysicalAttributes, physicalBuilder =>
+        {
+            physicalBuilder.Property(pa => pa.Weight)
+                .HasColumnName("Weight")
+                .HasColumnType("decimal(18,2)");
+
+            physicalBuilder.Property(pa => pa.Dimensions)
+                .HasColumnName("Dimensions")
+                .HasMaxLength(100);
+
+            physicalBuilder.Property(pa => pa.Color)
+                .HasColumnName("Color")
+                .HasMaxLength(50);
+
+            physicalBuilder.Property(pa => pa.Size)
+                .HasColumnName("Size")
+                .HasMaxLength(50);
+        });
+
+        // Map SeoMetadata value object
+        builder.OwnsOne(p => p.ProductSeoMetadata, seoBuilder =>
+        {
+            seoBuilder.Property(sm => sm.MetaTitle)
+                .HasColumnName("MetaTitle")
+                .HasMaxLength(200);
+
+            seoBuilder.Property(sm => sm.MetaDescription)
+                .HasColumnName("MetaDescription")
+                .HasMaxLength(500);
+        });
+
+        // Map ShippingInfo value object
+        builder.OwnsOne(p => p.ProductShippingInfo, shippingBuilder =>
+        {
+            shippingBuilder.Property(si => si.RequiresShipping)
+                .HasColumnName("RequiresShipping")
+                .IsRequired();
+
+            shippingBuilder.Property(si => si.ShippingWeight)
+                .HasColumnName("ShippingWeight")
+                .HasColumnType("decimal(18,2)");
+        });
+
+        // Map ProductImages value object as JSON (for in-memory DB, we'll store as comma-separated)
+        // For production, consider using a proper JSON column type
+        builder.Property(p => p.Images)
+            .HasConversion(
+                images => string.Join("|||", images.ImageUrls),
+                value => ProductImages.Create(
+                    string.IsNullOrEmpty(value) ? Array.Empty<string>() : value.Split("|||", StringSplitOptions.RemoveEmptyEntries)))
+            .HasColumnName("Images")
+            .HasMaxLength(2000);
+
+        // Map ProductTags value object as JSON (for in-memory DB, we'll store as comma-separated)
+        builder.Property(p => p.Tags)
+            .HasConversion(
+                tags => string.Join("|||", tags.Tags),
+                value => ProductTags.Create(
+                    string.IsNullOrEmpty(value) ? Array.Empty<string>() : value.Split("|||", StringSplitOptions.RemoveEmptyEntries)))
+            .HasColumnName("Tags")
+            .HasMaxLength(1000);
 
         builder.Property(p => p.Category)
             .HasMaxLength(100)

@@ -27,6 +27,8 @@ import {
 import { useLowStockItems } from "../hooks/useInventory";
 import { useAdjustInventoryStock } from "../hooks/useAdjustInventoryStock";
 import { AdjustStockDialog } from "./AdjustStockDialog";
+import { PermissionGate } from "@/shared/components/PermissionGate";
+import { PERMISSIONS } from "@/shared/constants/permissions";
 import type { LowStockItemResponse } from "../types/types";
 
 export const StockManagement: React.FC = () => {
@@ -328,9 +330,11 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
             </div>
           </div>
 
-          <Button onClick={onAdjustStock} variant="outline">
-            Adjust Stock
-          </Button>
+          <PermissionGate permission={PERMISSIONS.INVENTORY_WRITE}>
+            <Button onClick={onAdjustStock} variant="outline">
+              Adjust Stock
+            </Button>
+          </PermissionGate>
         </div>
       </CardContent>
     </Card>

@@ -38,6 +38,8 @@ import { useProducts } from "../hooks/useProducts";
 import { useDeleteProduct } from "../hooks/useDeleteProduct";
 import { useUpdateProduct } from "../hooks/useUpdateProduct";
 import { EditProductDialog } from "./EditProductDialog";
+import { useAuth } from "@/features/auth";
+import { PERMISSIONS } from "@/shared/constants/permissions";
 import type { ProductDto, UpdateProductRequest } from "../types/types";
 
 export const ProductManagementTable: React.FC = () => {
@@ -49,6 +51,7 @@ export const ProductManagementTable: React.FC = () => {
   const { data: products = [], isLoading, error } = useProducts();
   const deleteProductMutation = useDeleteProduct();
   const updateProductMutation = useUpdateProduct();
+  const { hasPermission } = useAuth();
 
   // Get unique categories
   const categories = [
@@ -153,16 +156,20 @@ export const ProductManagementTable: React.FC = () => {
                 >
                   Copy product ID
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setEditingProduct(product);
-                    setIsEditDialogOpen(true);
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit product
-                </DropdownMenuItem>
+                {hasPermission(PERMISSIONS.PRODUCTS_WRITE) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditingProduct(product);
+                        setIsEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit product
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={() => {
                     navigate(`/products/${product.id}`);
@@ -170,33 +177,37 @@ export const ProductManagementTable: React.FC = () => {
                 >
                   View details
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Are you sure you want to delete "${product.name}"?`
-                      )
-                    ) {
-                      deleteProductMutation.mutate(product.id, {
-                        onSuccess: () => {
-                          navigate("/products/create");
-                        },
-                      });
-                    }
-                  }}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete product
-                </DropdownMenuItem>
+                {hasPermission(PERMISSIONS.PRODUCTS_WRITE) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Are you sure you want to delete "${product.name}"?`
+                          )
+                        ) {
+                          deleteProductMutation.mutate(product.id, {
+                            onSuccess: () => {
+                              navigate("/products/create");
+                            },
+                          });
+                        }
+                      }}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete product
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [deleteProductMutation, navigate]
+    [deleteProductMutation, navigate, hasPermission]
   );
 
   if (isLoading) {
@@ -229,10 +240,12 @@ export const ProductManagementTable: React.FC = () => {
             Manage your product catalog and inventory
           </p>
         </div>
-        <Button onClick={() => navigate("/products/create")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
+        <PermissionGate permission={PERMISSIONS.PRODUCTS_WRITE}>
+          <Button onClick={() => navigate("/products/create")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Stats Cards */}

@@ -2,8 +2,10 @@ using Clean.Architecture.Application.Common.Interfaces;
 using Clean.Architecture.Application.Orders;
 using Clean.Architecture.Application.Products;
 using Clean.Architecture.Domain.Inventory;
+using Clean.Architecture.Domain.Users;
 using Clean.Architecture.Persistence.Interceptors;
 using Clean.Architecture.Persistence.Repositories;
+using Clean.Architecture.Persistence.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Messaging;
@@ -32,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, EfProductRepository>();
         services.AddScoped<IOrderRepository, EfOrderRepository>();
         services.AddScoped<IInventoryItemRepository, EfInventoryItemRepository>();
+        services.AddScoped<IUserRepository, EfUserRepository>();
+        services.AddScoped<IRoleRepository, EfRoleRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();

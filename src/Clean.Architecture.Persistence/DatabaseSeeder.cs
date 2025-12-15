@@ -1,6 +1,8 @@
 using Clean.Architecture.Domain.Products;
 using Clean.Architecture.Domain.Inventory;
 using Clean.Architecture.Domain.Orders;
+using Clean.Architecture.Domain.Users;
+using BCrypt.Net;
 
 namespace Clean.Architecture.Persistence;
 
@@ -8,6 +10,9 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context)
     {
+        // Seed Roles and Users first
+        await SeedRolesAndUsersAsync(context);
+
         if (context.Products.Any())
         {
             return; // Database has been seeded
@@ -53,6 +58,67 @@ public static class DatabaseSeeder
         order2.AddItem("KEYBOARD001", "Mechanical Keyboard", 129.99m, 1);
         order2.AddItem("MONITOR001", "4K Monitor", 349.99m, 1);
         await context.Orders.AddAsync(order2);
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedRolesAndUsersAsync(ApplicationDbContext context)
+    {
+        // Check if roles already exist
+        if (context.Roles.Any())
+        {
+            return; // Roles and users have been seeded
+        }
+
+        // Create Admin Role with all permissions
+        var adminRole = Role.Create("Admin", "Administrator with full access to all features");
+        adminRole.AddPermission(Permission.ProductsRead);
+        adminRole.AddPermission(Permission.ProductsWrite);
+        adminRole.AddPermission(Permission.OrdersRead);
+        adminRole.AddPermission(Permission.OrdersCreate);
+        adminRole.AddPermission(Permission.OrdersManage);
+        adminRole.AddPermission(Permission.InventoryRead);
+        adminRole.AddPermission(Permission.InventoryWrite);
+        await context.Roles.AddAsync(adminRole);
+
+        // Create Manager Role with most permissions
+        var managerRole = Role.Create("Manager", "Manager with read/write access to most features");
+        managerRole.AddPermission(Permission.ProductsRead);
+        managerRole.AddPermission(Permission.ProductsWrite);
+        managerRole.AddPermission(Permission.OrdersRead);
+        managerRole.AddPermission(Permission.OrdersCreate);
+        managerRole.AddPermission(Permission.OrdersManage);
+        managerRole.AddPermission(Permission.InventoryRead);
+        managerRole.AddPermission(Permission.InventoryWrite);
+        await context.Roles.AddAsync(managerRole);
+
+        // Create User Role with read-only and basic create permissions
+        var userRole = Role.Create("User", "Regular user with read access and ability to create orders");
+        userRole.AddPermission(Permission.ProductsRead);
+        userRole.AddPermission(Permission.OrdersRead);
+        userRole.AddPermission(Permission.OrdersCreate);
+        userRole.AddPermission(Permission.InventoryRead);
+        await context.Roles.AddAsync(userRole);
+
+        await context.SaveChangesAsync();
+
+        // Create Admin User
+        var adminPasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"); // Default password - should be changed in production
+        var adminUser = User.Create("admin@example.com", adminPasswordHash, "Admin", "User");
+        adminUser.AddRole(adminRole);
+        await context.Users.AddAsync(adminUser);
+
+        // Create Manager User
+        var managerPasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"); // Default password
+        var managerUser = User.Create("manager@example.com", managerPasswordHash, "Manager", "User");
+        managerUser.AddRole(managerRole);
+        await context.Users.AddAsync(managerUser);
+
+        // Create Regular User
+        var userPasswordHash = BCrypt.Net.BCrypt.HashPassword("User123!"); // Default password
+        var regularUser = User.Create("user@example.com", userPasswordHash, "Regular", "User");
+        regularUser.AddRole(userRole);
+        await context.Users.AddAsync(regularUser);
 
         await context.SaveChangesAsync();
     }

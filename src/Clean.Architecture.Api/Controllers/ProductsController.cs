@@ -5,8 +5,10 @@ using Clean.Architecture.Application.Products.DeleteProduct;
 using Clean.Architecture.Application.Products.GetAllProducts;
 using Clean.Architecture.Application.Products.GetProductById;
 using Clean.Architecture.Application.Products.UpdateProduct;
+using Clean.Architecture.Api.Attributes;
 using Shared.Messaging;
 using Shared.Results;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clean.Architecture.Api.Controllers;
@@ -16,6 +18,7 @@ namespace Clean.Architecture.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IQueryHandler<GetAllProductsQuery, IReadOnlyList<ProductDto>> _getAllProductsHandler;
@@ -47,6 +50,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of products.</returns>
     [HttpGet]
+    [RequirePermission("Products.Read")]
     public async Task<ActionResult<Result<IReadOnlyList<ProductDto>>>> GetAllProducts(CancellationToken cancellationToken)
     {
         var result = await _getAllProductsHandler.Handle(new GetAllProductsQuery(), cancellationToken);
@@ -60,6 +64,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The product.</returns>
     [HttpGet("{id:guid}")]
+    [RequirePermission("Products.Read")]
     public async Task<ActionResult<Result<ProductDto?>>> GetProductById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _getProductByIdHandler.Handle(new GetProductByIdQuery(id), cancellationToken);
@@ -73,6 +78,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created product.</returns>
     [HttpPost]
+    [RequirePermission("Products.Write")]
     public async Task<ActionResult<Result<CreateProductResult>>> CreateProduct(
         [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken)
@@ -121,6 +127,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The updated product.</returns>
     [HttpPut("{id:guid}")]
+    [RequirePermission("Products.Write")]
     public async Task<ActionResult<Result<ProductDto>>> UpdateProduct(
         Guid id,
         [FromBody] UpdateProductRequest request,
@@ -160,6 +167,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>No content on success.</returns>
     [HttpDelete("{id:guid}")]
+    [RequirePermission("Products.Write")]
     public async Task<ActionResult<Result>> DeleteProduct(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteProductCommand(id);

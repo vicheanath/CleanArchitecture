@@ -41,6 +41,8 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { useOrders } from "../hooks/useOrders";
 import { useCreateOrder } from "../hooks/useCreateOrder";
 import { productsApi } from "../../products/api/productsApi";
+import { PermissionGate } from "@/shared/components/PermissionGate";
+import { PERMISSIONS } from "@/shared/constants/permissions";
 import type { OrderDto, CreateOrderRequest } from "../types/types";
 import type { ProductDto } from "../../products/types/types";
 
@@ -128,13 +130,15 @@ export const OrderManagement: React.FC = () => {
             Manage customer orders and track sales
           </p>
         </div>
-        <CreateOrderDialog
-          isOpen={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
-          onSubmit={handleCreateOrder}
-          isLoading={createOrderMutation.isPending}
-          products={products}
-        />
+        <PermissionGate permission={PERMISSIONS.ORDERS_CREATE}>
+          <CreateOrderDialog
+            isOpen={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+            onSubmit={handleCreateOrder}
+            isLoading={createOrderMutation.isPending}
+            products={products}
+          />
+        </PermissionGate>
       </div>
 
       {/* Stats Cards */}

@@ -6,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
+import { PermissionGate } from "@/shared/components/PermissionGate";
+import { PERMISSIONS } from "@/shared/constants/permissions";
 import type { ProductDto } from "../types/types";
 
 interface ProductCardProps {
@@ -34,16 +36,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             </div>
           </div>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(product)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
+          <PermissionGate permission={PERMISSIONS.PRODUCTS_WRITE}>
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(product)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          </PermissionGate>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

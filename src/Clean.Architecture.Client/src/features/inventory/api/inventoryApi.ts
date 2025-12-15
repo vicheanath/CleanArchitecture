@@ -1,3 +1,4 @@
+import { ApiClient } from "@/shared/lib/apiClient";
 import type {
   InventoryItemResponse,
   LowStockItemResponse,
@@ -6,53 +7,7 @@ import type {
   ReserveInventoryRequest,
 } from "../types/types";
 
-const API_BASE_URL = "http://localhost:5105/api";
-
-class InventoryApi {
-  private async request<T>(
-    endpoint: string,
-    options?: RequestInit
-  ): Promise<T> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`Resource not found: ${endpoint}`);
-        }
-        if (response.status === 400) {
-          throw new Error(`Bad request: ${response.statusText}`);
-        }
-        if (response.status >= 500) {
-          throw new Error(
-            `Server error: ${response.status} ${response.statusText}`
-          );
-        }
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return response.json();
-      } else {
-        return {} as T;
-      }
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new Error(
-          "Network error: Unable to connect to the server. Please check if the API is running."
-        );
-      }
-      throw error;
-    }
-  }
-
+class InventoryApi extends ApiClient {
   async getInventoryItem(id: string): Promise<InventoryItemResponse> {
     if (!id) {
       throw new Error("Inventory item ID is required");
@@ -76,10 +31,11 @@ class InventoryApi {
     if (!item || !item.productSku) {
       throw new Error("Invalid inventory item data: missing required fields");
     }
-    return this.request<string>("/inventory", {
+    const response = await this.request<{ value: string }>("/inventory", {
       method: "POST",
       body: JSON.stringify(item),
     });
+    return "value" in response ? response.value : (response as string);
   }
 
   async adjustInventoryStock(

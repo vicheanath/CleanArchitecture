@@ -3,14 +3,17 @@ using Clean.Architecture.Application.Orders.DTOs;
 using Clean.Architecture.Application.Orders.CreateOrder;
 using Clean.Architecture.Application.Orders.GetAllOrders;
 using Clean.Architecture.Application.Orders.GetOrderById;
+using Clean.Architecture.Api.Attributes;
 using Shared.Messaging;
 using Shared.Results;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clean.Architecture.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly IQueryHandler<GetAllOrdersQuery, IReadOnlyList<OrderDto>> _getAllOrdersHandler;
@@ -28,6 +31,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission("Orders.Read")]
     public async Task<ActionResult<Result<IReadOnlyList<OrderDto>>>> GetAllOrders(CancellationToken cancellationToken)
     {
         var result = await _getAllOrdersHandler.Handle(new GetAllOrdersQuery(), cancellationToken);
@@ -35,6 +39,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission("Orders.Read")]
     public async Task<ActionResult<Result<OrderDto?>>> GetOrderById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _getOrderByIdHandler.Handle(new GetOrderByIdQuery(id), cancellationToken);
@@ -42,6 +47,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission("Orders.Create")]
     public async Task<ActionResult<Result<CreateOrderResult>>> CreateOrder(
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)

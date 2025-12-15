@@ -3,6 +3,8 @@ using Clean.Architecture.Application.Inventory.CreateInventoryItem;
 using Clean.Architecture.Application.Inventory.ReserveInventory;
 using Clean.Architecture.Application.Inventory.GetInventoryItem;
 using Clean.Architecture.Application.Inventory.GetLowStockItems;
+using Clean.Architecture.Api.Attributes;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Messaging;
 using Shared.Results;
@@ -16,6 +18,7 @@ namespace Clean.Architecture.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class InventoryController : ControllerBase
 {
     private readonly IQueryHandler<GetInventoryItemQuery, InventoryItemResponse> _getInventoryItemHandler;
@@ -48,6 +51,7 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The inventory item.</returns>
     [HttpGet("{id:guid}")]
+    [RequirePermission("Inventory.Read")]
     public async Task<ActionResult<Result<InventoryItemResponse>>> GetInventoryItem(
         Guid id,
         CancellationToken cancellationToken)
@@ -63,6 +67,7 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The collection of low stock items.</returns>
     [HttpGet("low-stock")]
+    [RequirePermission("Inventory.Read")]
     public async Task<ActionResult<Result<IEnumerable<LowStockItemResponse>>>> GetLowStockItems(
         CancellationToken cancellationToken)
     {
@@ -78,6 +83,7 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created inventory item identifier.</returns>
     [HttpPost]
+    [RequirePermission("Inventory.Write")]
     public async Task<ActionResult<Result<Guid>>> CreateInventoryItem(
         [FromBody] CreateInventoryItemRequest request,
         CancellationToken cancellationToken)
@@ -108,6 +114,7 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the operation.</returns>
     [HttpPatch("{id:guid}/adjust-stock")]
+    [RequirePermission("Inventory.Write")]
     public async Task<ActionResult<Result>> AdjustInventoryStock(
         Guid id,
         [FromBody] AdjustInventoryStockRequest request,
@@ -132,6 +139,7 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the operation.</returns>
     [HttpPost("{id:guid}/reservations")]
+    [RequirePermission("Inventory.Write")]
     public async Task<ActionResult<Result>> ReserveInventory(
         Guid id,
         [FromBody] ReserveInventoryRequest request,

@@ -13,12 +13,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.8.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Clean.Architecture.Application/Clean.Architecture.Application.csproj" />
-    <ProjectReference Include="../Clean.Architecture.Persistence/Clean.Architecture.Persistence.csproj" />
+    <ProjectReference
+      Include="../Clean.Architecture.Application/Clean.Architecture.Application.csproj" />
+    <ProjectReference
+      Include="../Clean.Architecture.Persistence/Clean.Architecture.Persistence.csproj" />
     <ProjectReference Include="../../Shared/Shared.csproj" />
   </ItemGroup>
 

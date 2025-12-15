@@ -21,6 +21,8 @@ import { useUpdateProduct } from "../hooks/useUpdateProduct";
 import { ProductCard } from "./ProductCard";
 import { CreateProductDialog } from "./CreateProductDialog";
 import { EditProductDialog } from "./EditProductDialog";
+import { PermissionGate } from "@/shared/components/PermissionGate";
+import { PERMISSIONS } from "@/shared/constants/permissions";
 import type {
   ProductDto,
   CreateProductRequest,
@@ -114,12 +116,14 @@ export const ProductManagement: React.FC = () => {
             Manage your product catalog and inventory
           </p>
         </div>
-        <CreateProductDialog
-          isOpen={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
-          onSubmit={handleCreateProduct}
-          isLoading={createProductMutation.isPending}
-        />
+        <PermissionGate permission={PERMISSIONS.PRODUCTS_WRITE}>
+          <CreateProductDialog
+            isOpen={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+            onSubmit={handleCreateProduct}
+            isLoading={createProductMutation.isPending}
+          />
+        </PermissionGate>
       </div>
 
       {/* Stats Cards */}

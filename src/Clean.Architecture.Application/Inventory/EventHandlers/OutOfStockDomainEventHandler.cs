@@ -18,13 +18,25 @@ public class OutOfStockDomainEventHandler : IDomainEventHandler<OutOfStockDomain
 
     public Task Handle(OutOfStockDomainEvent domainEvent, CancellationToken cancellationToken)
     {
-        _logger.LogCritical("CRITICAL: Product {ProductSku} is out of stock!", domainEvent.ProductSku);
+        _logger.LogCritical(
+            "CRITICAL: Product {ProductSku} is out of stock! InventoryItemId: {InventoryItemId}",
+            domainEvent.ProductSku,
+            domainEvent.InventoryItemId.Value);
 
-        // Here you could implement additional logic such as:
-        // - Send urgent notifications
-        // - Disable product from online catalog
-        // - Alert customer service team
-        // - Trigger emergency reorder
+        // Log structured critical alert for monitoring systems
+        _logger.LogCritical(
+            "OUT_OF_STOCK_ALERT - ProductSku: {ProductSku}, InventoryItemId: {InventoryItemId}, " +
+            "Timestamp: {Timestamp}",
+            domainEvent.ProductSku,
+            domainEvent.InventoryItemId.Value,
+            domainEvent.OccurredOnUtc);
+
+        // Log additional context for operations team
+        _logger.LogCritical(
+            "URGENT: Immediate action required - Product {ProductSku} (InventoryItemId: {InventoryItemId}) " +
+            "has reached zero stock. Restocking required immediately.",
+            domainEvent.ProductSku,
+            domainEvent.InventoryItemId.Value);
 
         return Task.CompletedTask;
     }

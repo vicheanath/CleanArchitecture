@@ -24,16 +24,37 @@ internal sealed class InventoryItemCreatedDomainEventHandler : IDomainEventHandl
     public async Task Handle(InventoryItemCreatedDomainEvent domainEvent, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Inventory item created: {InventoryItemId} for product SKU: {ProductSku} with initial quantity: {InitialQuantity}",
+            "Inventory item created: {InventoryItemId} for product SKU: {ProductSku} with initial quantity: {InitialQuantity} and minimum stock level: {MinimumStockLevel}",
             domainEvent.InventoryItemId.Value,
             domainEvent.ProductSku,
-            domainEvent.InitialQuantity);
+            domainEvent.InitialQuantity,
+            domainEvent.MinimumStockLevel);
 
-        // Additional logic could be added here, such as:
-        // - Sending notifications to warehouse staff
-        // - Updating external inventory management systems
-        // - Creating audit log entries
-        // - Triggering other business processes
+        // Log structured information for monitoring and analytics
+        _logger.LogInformation(
+            "New inventory item registered - ProductSku: {ProductSku}, InventoryItemId: {InventoryItemId}, InitialQuantity: {InitialQuantity}, MinimumStockLevel: {MinimumStockLevel}",
+            domainEvent.ProductSku,
+            domainEvent.InventoryItemId.Value,
+            domainEvent.InitialQuantity,
+            domainEvent.MinimumStockLevel);
+
+        // Check if initial quantity is below minimum and log warning
+        if (domainEvent.InitialQuantity < domainEvent.MinimumStockLevel)
+        {
+            _logger.LogWarning(
+                "Inventory item created with quantity below minimum stock level - ProductSku: {ProductSku}, Quantity: {Quantity}, MinimumLevel: {MinimumLevel}",
+                domainEvent.ProductSku,
+                domainEvent.InitialQuantity,
+                domainEvent.MinimumStockLevel);
+        }
+
+        // Check if initial quantity is zero and log info
+        if (domainEvent.InitialQuantity == 0)
+        {
+            _logger.LogInformation(
+                "Inventory item created with zero initial quantity - ProductSku: {ProductSku}. Stock needs to be added.",
+                domainEvent.ProductSku);
+        }
 
         await Task.CompletedTask;
     }

@@ -35,12 +35,35 @@ internal sealed class InventoryStockChangedDomainEventHandler :
             domainEvent.NewQuantity,
             domainEvent.Reason ?? "Not specified");
 
-        // Additional logic could be added here, such as:
-        // - Updating inventory reports
-        // - Notifying sales team of increased availability
-        // - Updating product availability on website
-        // - Creating audit trail entries
-        // - Triggering business intelligence updates
+        // Calculate percentage increase for analytics
+        var percentageIncrease = domainEvent.PreviousQuantity > 0
+            ? (domainEvent.QuantityAdded / (decimal)domainEvent.PreviousQuantity) * 100
+            : 100;
+
+        _logger.LogInformation(
+            "Stock increase analytics - ProductSku: {ProductSku}, PercentageIncrease: {PercentageIncrease:F2}%, " +
+            "StockLevelChange: {PreviousQuantity} -> {NewQuantity}",
+            domainEvent.ProductSku,
+            percentageIncrease,
+            domainEvent.PreviousQuantity,
+            domainEvent.NewQuantity);
+
+        // Log if stock was replenished from zero or low levels
+        if (domainEvent.PreviousQuantity == 0)
+        {
+            _logger.LogInformation(
+                "Product {ProductSku} stock replenished from zero - {QuantityAdded} units added",
+                domainEvent.ProductSku,
+                domainEvent.QuantityAdded);
+        }
+        else if (domainEvent.PreviousQuantity <= 5)
+        {
+            _logger.LogInformation(
+                "Product {ProductSku} stock replenished from low level - {QuantityAdded} units added, now at {NewQuantity}",
+                domainEvent.ProductSku,
+                domainEvent.QuantityAdded,
+                domainEvent.NewQuantity);
+        }
 
         await Task.CompletedTask;
     }
@@ -58,12 +81,35 @@ internal sealed class InventoryStockChangedDomainEventHandler :
             domainEvent.NewQuantity,
             domainEvent.Reason ?? "Not specified");
 
-        // Additional logic could be added here, such as:
-        // - Updating inventory reports
-        // - Checking if reorder is needed
-        // - Updating product availability on website
-        // - Creating audit trail entries
-        // - Triggering business intelligence updates
+        // Calculate percentage decrease for analytics
+        var percentageDecrease = domainEvent.PreviousQuantity > 0
+            ? (domainEvent.QuantityRemoved / (decimal)domainEvent.PreviousQuantity) * 100
+            : 0;
+
+        _logger.LogInformation(
+            "Stock decrease analytics - ProductSku: {ProductSku}, PercentageDecrease: {PercentageDecrease:F2}%, " +
+            "StockLevelChange: {PreviousQuantity} -> {NewQuantity}",
+            domainEvent.ProductSku,
+            percentageDecrease,
+            domainEvent.PreviousQuantity,
+            domainEvent.NewQuantity);
+
+        // Log if stock is now at zero or very low
+        if (domainEvent.NewQuantity == 0)
+        {
+            _logger.LogWarning(
+                "Product {ProductSku} stock depleted to zero after removing {QuantityRemoved} units",
+                domainEvent.ProductSku,
+                domainEvent.QuantityRemoved);
+        }
+        else if (domainEvent.NewQuantity <= 5)
+        {
+            _logger.LogWarning(
+                "Product {ProductSku} stock is now critically low at {NewQuantity} units after removing {QuantityRemoved} units",
+                domainEvent.ProductSku,
+                domainEvent.NewQuantity,
+                domainEvent.QuantityRemoved);
+        }
 
         await Task.CompletedTask;
     }

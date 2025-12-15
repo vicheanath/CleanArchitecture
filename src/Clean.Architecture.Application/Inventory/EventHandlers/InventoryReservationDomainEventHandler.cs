@@ -34,12 +34,39 @@ internal sealed class InventoryReservationDomainEventHandler :
             domainEvent.AvailableQuantity,
             domainEvent.ReservationId);
 
-        // Additional logic could be added here, such as:
-        // - Updating order management systems
-        // - Notifying fulfillment centers
-        // - Creating reservation audit logs
-        // - Updating available inventory displays
-        // - Triggering allocation workflows
+        // Calculate reservation percentage of available stock
+        var reservationPercentage = domainEvent.AvailableQuantity > 0
+            ? (domainEvent.QuantityReserved / (decimal)domainEvent.AvailableQuantity) * 100
+            : 0;
+
+        _logger.LogInformation(
+            "Reservation analytics - ProductSku: {ProductSku}, ReservationId: {ReservationId}, " +
+            "ReservationPercentage: {ReservationPercentage:F2}% of available stock, " +
+            "RemainingAvailable: {RemainingAvailable} units",
+            domainEvent.ProductSku,
+            domainEvent.ReservationId,
+            reservationPercentage,
+            domainEvent.AvailableQuantity - domainEvent.QuantityReserved);
+
+        // Log if reservation leaves very little available stock
+        var remainingAvailable = domainEvent.AvailableQuantity - domainEvent.QuantityReserved;
+        if (remainingAvailable <= 5 && remainingAvailable > 0)
+        {
+            _logger.LogWarning(
+                "Low available stock after reservation - ProductSku: {ProductSku}, " +
+                "ReservationId: {ReservationId}, RemainingAvailable: {RemainingAvailable} units",
+                domainEvent.ProductSku,
+                domainEvent.ReservationId,
+                remainingAvailable);
+        }
+        else if (remainingAvailable == 0)
+        {
+            _logger.LogWarning(
+                "No available stock remaining after reservation - ProductSku: {ProductSku}, " +
+                "ReservationId: {ReservationId}",
+                domainEvent.ProductSku,
+                domainEvent.ReservationId);
+        }
 
         await Task.CompletedTask;
     }
@@ -56,12 +83,24 @@ internal sealed class InventoryReservationDomainEventHandler :
             domainEvent.AvailableQuantity,
             domainEvent.ReservationId);
 
-        // Additional logic could be added here, such as:
-        // - Updating order management systems
-        // - Making inventory available for new orders
-        // - Creating reservation release audit logs
-        // - Updating available inventory displays
-        // - Triggering inventory availability notifications
+        // Log the increase in available stock
+        _logger.LogInformation(
+            "Stock availability increased - ProductSku: {ProductSku}, ReservationId: {ReservationId}, " +
+            "QuantityReleased: {QuantityReleased}, NewAvailableQuantity: {AvailableQuantity}",
+            domainEvent.ProductSku,
+            domainEvent.ReservationId,
+            domainEvent.QuantityReleased,
+            domainEvent.AvailableQuantity);
+
+        // Log if stock is now back above minimum levels (if we had context about minimum)
+        // This is informational for monitoring
+        _logger.LogInformation(
+            "Reservation release completed - ProductSku: {ProductSku}, ReservationId: {ReservationId}, " +
+            "InventoryItemId: {InventoryItemId}, AvailableQuantity: {AvailableQuantity}",
+            domainEvent.ProductSku,
+            domainEvent.ReservationId,
+            domainEvent.InventoryItemId.Value,
+            domainEvent.AvailableQuantity);
 
         await Task.CompletedTask;
     }

@@ -1,11 +1,9 @@
-﻿using MediatR;
-
 namespace Shared.Primitives;
 
 /// <summary>
 /// Represents the domain event interface.
 /// </summary>
-public interface IDomainEvent : INotification
+public interface IDomainEvent
 {
     /// <summary>
     /// Gets the identifier.

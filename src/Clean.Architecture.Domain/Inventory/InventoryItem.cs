@@ -1,6 +1,5 @@
 using Clean.Architecture.Domain.Inventory.Events;
 using Shared.Primitives;
-using Shared.Time;
 
 namespace Clean.Architecture.Domain.Inventory;
 
@@ -24,12 +23,12 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
         ProductSku = productSku;
         Quantity = quantity;
         MinimumStockLevel = minimumStockLevel;
-        CreatedOnUtc = SystemTime.UtcNow;
+        CreatedOnUtc = DateTime.UtcNow;
         ModifiedOnUtc = null;
 
         RaiseDomainEvent(new InventoryItemCreatedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             quantity,
@@ -129,11 +128,11 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
 
         var previousQuantity = Quantity;
         Quantity += quantity;
-        ModifiedOnUtc = SystemTime.UtcNow;
+        ModifiedOnUtc = DateTime.UtcNow;
 
         RaiseDomainEvent(new InventoryStockIncreasedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             quantity,
@@ -159,11 +158,11 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
 
         var previousQuantity = Quantity;
         Quantity -= quantity;
-        ModifiedOnUtc = SystemTime.UtcNow;
+        ModifiedOnUtc = DateTime.UtcNow;
 
         RaiseDomainEvent(new InventoryStockDecreasedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             quantity,
@@ -187,11 +186,11 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
 
         var previousMinimumStockLevel = MinimumStockLevel;
         MinimumStockLevel = newMinimumStockLevel;
-        ModifiedOnUtc = SystemTime.UtcNow;
+        ModifiedOnUtc = DateTime.UtcNow;
 
         RaiseDomainEvent(new MinimumStockLevelUpdatedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             previousMinimumStockLevel,
@@ -222,13 +221,13 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
         if (quantity > AvailableQuantity)
             throw new InvalidOperationException("Cannot reserve more quantity than available");
 
-        var reservation = new InventoryReservation(reservationId, quantity, SystemTime.UtcNow, expiresAt);
+        var reservation = new InventoryReservation(reservationId, quantity, DateTime.UtcNow, expiresAt);
         _reservations.Add(reservation);
-        ModifiedOnUtc = SystemTime.UtcNow;
+        ModifiedOnUtc = DateTime.UtcNow;
 
         RaiseDomainEvent(new InventoryReservedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             quantity,
@@ -252,11 +251,11 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
             throw new InvalidOperationException($"No active reservation found with ID '{reservationId}'");
 
         _reservations.Remove(reservation);
-        ModifiedOnUtc = SystemTime.UtcNow;
+        ModifiedOnUtc = DateTime.UtcNow;
 
         RaiseDomainEvent(new InventoryReservationReleasedDomainEvent(
             Guid.NewGuid(),
-            SystemTime.UtcNow,
+            DateTime.UtcNow,
             Id,
             ProductSku,
             reservation.Quantity,
@@ -297,7 +296,7 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
 
             RaiseDomainEvent(new InventoryReservationReleasedDomainEvent(
                 Guid.NewGuid(),
-                SystemTime.UtcNow,
+                DateTime.UtcNow,
                 Id,
                 ProductSku,
                 expiredReservation.Quantity,
@@ -307,7 +306,7 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
 
         if (expiredReservations.Count > 0)
         {
-            ModifiedOnUtc = SystemTime.UtcNow;
+            ModifiedOnUtc = DateTime.UtcNow;
         }
     }
 
@@ -317,7 +316,7 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
         {
             RaiseDomainEvent(new LowStockWarningDomainEvent(
                 Guid.NewGuid(),
-                SystemTime.UtcNow,
+                DateTime.UtcNow,
                 Id,
                 ProductSku,
                 Quantity,
@@ -331,7 +330,7 @@ public sealed class InventoryItem : Entity<InventoryItemId>, IAuditable
         {
             RaiseDomainEvent(new OutOfStockDomainEvent(
                 Guid.NewGuid(),
-                SystemTime.UtcNow,
+                DateTime.UtcNow,
                 Id,
                 ProductSku));
         }

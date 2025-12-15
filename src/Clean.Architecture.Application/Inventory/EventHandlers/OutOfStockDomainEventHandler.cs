@@ -5,37 +5,27 @@ using Shared.Messaging;
 namespace Clean.Architecture.Application.Inventory.EventHandlers;
 
 /// <summary>
-/// Handles the out of stock domain event.
+/// Handles OutOfStockDomainEvent to log critical warnings
 /// </summary>
-internal sealed class OutOfStockDomainEventHandler : IDomainEventHandler<OutOfStockDomainEvent>
+public class OutOfStockDomainEventHandler : IDomainEventHandler<OutOfStockDomainEvent>
 {
     private readonly ILogger<OutOfStockDomainEventHandler> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OutOfStockDomainEventHandler"/> class.
-    /// </summary>
-    /// <param name="logger">The logger.</param>
     public OutOfStockDomainEventHandler(ILogger<OutOfStockDomainEventHandler> logger)
     {
         _logger = logger;
     }
 
-    /// <inheritdoc />
-    public async Task Handle(OutOfStockDomainEvent domainEvent, CancellationToken cancellationToken)
+    public Task Handle(OutOfStockDomainEvent domainEvent, CancellationToken cancellationToken)
     {
-        _logger.LogCritical(
-            "Product is out of stock! Inventory item {InventoryItemId}, product SKU: {ProductSku}",
-            domainEvent.InventoryItemId.Value,
-            domainEvent.ProductSku);
+        _logger.LogCritical("CRITICAL: Product {ProductSku} is out of stock!", domainEvent.ProductSku);
 
-        // Additional logic could be added here, such as:
-        // - Sending urgent notifications to management
-        // - Disabling product sales on the website
-        // - Creating high-priority purchase orders
-        // - Notifying customer service team
-        // - Updating product availability status
-        // - Triggering emergency restocking procedures
+        // Here you could implement additional logic such as:
+        // - Send urgent notifications
+        // - Disable product from online catalog
+        // - Alert customer service team
+        // - Trigger emergency reorder
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 }

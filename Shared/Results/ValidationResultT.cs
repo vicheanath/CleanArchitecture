@@ -1,4 +1,4 @@
-﻿using Shared.Errors;
+using Shared.Errors;
 
 namespace Shared.Results;
 
@@ -6,14 +6,14 @@ namespace Shared.Results;
 /// Represents a validation result of some operation, with the errors that occurred.
 /// </summary>
 /// <typeparam name="TValue">The result value type.</typeparam>
-public sealed class ValidationResult<TValue> : Result<TValue>, IValidationResult
+public sealed class ValidationResult<TValue> : Result<TValue>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ValidationResult{TValue}"/> class.
     /// </summary>
     /// <param name="errors">The errors.</param>
     private ValidationResult(Error[] errors)
-        : base(default, false, IValidationResult.ValidationError) =>
+        : base(default, false, new Error("Validation.Failed", "Validation failed")) =>
         Errors = errors;
 
     /// <inheritdoc />

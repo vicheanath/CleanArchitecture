@@ -4,6 +4,7 @@ using Clean.Architecture.Application.Orders.CreateOrder;
 using Clean.Architecture.Application.Orders.GetAllOrders;
 using Clean.Architecture.Application.Orders.GetOrderById;
 using Shared.Messaging;
+using Shared.Results;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clean.Architecture.Api.Controllers;
@@ -12,29 +13,36 @@ namespace Clean.Architecture.Api.Controllers;
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase
 {
-    private readonly IDispatcher _dispatcher;
+    private readonly IQueryHandler<GetAllOrdersQuery, IReadOnlyList<OrderDto>> _getAllOrdersHandler;
+    private readonly IQueryHandler<GetOrderByIdQuery, OrderDto?> _getOrderByIdHandler;
+    private readonly ICommandHandler<CreateOrderCommand, CreateOrderResult> _createOrderHandler;
 
-    public OrdersController(IDispatcher dispatcher)
+    public OrdersController(
+        IQueryHandler<GetAllOrdersQuery, IReadOnlyList<OrderDto>> getAllOrdersHandler,
+        IQueryHandler<GetOrderByIdQuery, OrderDto?> getOrderByIdHandler,
+        ICommandHandler<CreateOrderCommand, CreateOrderResult> createOrderHandler)
     {
-        _dispatcher = dispatcher;
+        _getAllOrdersHandler = getAllOrdersHandler;
+        _getOrderByIdHandler = getOrderByIdHandler;
+        _createOrderHandler = createOrderHandler;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<OrderDto>>> GetAllOrders(CancellationToken cancellationToken)
+    public async Task<ActionResult<Result<IReadOnlyList<OrderDto>>>> GetAllOrders(CancellationToken cancellationToken)
     {
-        var orders = await _dispatcher.QueryAsync<GetAllOrdersQuery, IReadOnlyList<OrderDto>>(new GetAllOrdersQuery(), cancellationToken);
-        return Ok(orders);
+        var result = await _getAllOrdersHandler.Handle(new GetAllOrdersQuery(), cancellationToken);
+        return result;
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<OrderDto>> GetOrderById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<Result<OrderDto?>>> GetOrderById(Guid id, CancellationToken cancellationToken)
     {
-        var order = await _dispatcher.QueryAsync<GetOrderByIdQuery, OrderDto?>(new GetOrderByIdQuery(id), cancellationToken);
-        return Ok(order);
+        var result = await _getOrderByIdHandler.Handle(new GetOrderByIdQuery(id), cancellationToken);
+        return result;
     }
 
     [HttpPost]
-    public async Task<ActionResult<CreateOrderResult>> CreateOrder(
+    public async Task<ActionResult<Result<CreateOrderResult>>> CreateOrder(
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)
     {
@@ -44,12 +52,17 @@ public class OrdersController : ControllerBase
             request.ShippingAddress,
             request.Items.Select(i => new OrderItemRequest(i.ProductSku, i.Quantity)).ToList());
 
-        var result = await _dispatcher.CommandAsync<CreateOrderCommand, CreateOrderResult>(command, cancellationToken);
+        var result = await _createOrderHandler.Handle(command, cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetOrderById),
-            new { id = result.Id },
-            result);
+        if (result.IsSuccess)
+        {
+            return CreatedAtAction(
+                nameof(GetOrderById),
+                new { id = result.Value.Id },
+                result);
+        }
+
+        return result;
     }
 }
 

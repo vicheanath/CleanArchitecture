@@ -5,39 +5,28 @@ using Shared.Messaging;
 namespace Clean.Architecture.Application.Inventory.EventHandlers;
 
 /// <summary>
-/// Handles the low stock warning domain event.
+/// Handles LowStockWarningDomainEvent to log warnings and potentially trigger reorder processes
 /// </summary>
-internal sealed class LowStockWarningDomainEventHandler : IDomainEventHandler<LowStockWarningDomainEvent>
+public class LowStockWarningDomainEventHandler : IDomainEventHandler<LowStockWarningDomainEvent>
 {
     private readonly ILogger<LowStockWarningDomainEventHandler> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LowStockWarningDomainEventHandler"/> class.
-    /// </summary>
-    /// <param name="logger">The logger.</param>
     public LowStockWarningDomainEventHandler(ILogger<LowStockWarningDomainEventHandler> logger)
     {
         _logger = logger;
     }
 
-    /// <inheritdoc />
-    public async Task Handle(LowStockWarningDomainEvent domainEvent, CancellationToken cancellationToken)
+    public Task Handle(LowStockWarningDomainEvent domainEvent, CancellationToken cancellationToken)
     {
-        _logger.LogWarning(
-            "Low stock warning for inventory item {InventoryItemId}, product SKU: {ProductSku}. " +
-            "Current quantity: {CurrentQuantity}, Minimum stock level: {MinimumStockLevel}",
-            domainEvent.InventoryItemId.Value,
-            domainEvent.ProductSku,
-            domainEvent.CurrentQuantity,
-            domainEvent.MinimumStockLevel);
+        _logger.LogWarning("Low stock warning for product {ProductSku}: Current quantity {CurrentQuantity}, Minimum level {MinimumLevel}",
+            domainEvent.ProductSku, domainEvent.CurrentQuantity, domainEvent.MinimumStockLevel);
 
-        // Additional logic could be added here, such as:
-        // - Sending email notifications to procurement team
-        // - Creating purchase orders automatically
-        // - Notifying suppliers
-        // - Updating dashboard alerts
-        // - Triggering reorder processes
+        // Here you could implement additional logic such as:
+        // - Send notifications to procurement team
+        // - Automatically create purchase orders
+        // - Send email alerts
+        // - Update external systems
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 }

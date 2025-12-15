@@ -1,11 +1,13 @@
-using Clean.Architecture.Application.Inventory.Commands.AdjustInventoryStock;
-using Clean.Architecture.Application.Inventory.Commands.CreateInventoryItem;
-using Clean.Architecture.Application.Inventory.Commands.ReserveInventory;
-using Clean.Architecture.Application.Inventory.Queries.GetInventoryItem;
-using Clean.Architecture.Application.Inventory.Queries.GetLowStockItems;
+using Clean.Architecture.Application.Inventory.AdjustInventoryStock;
+using Clean.Architecture.Application.Inventory.CreateInventoryItem;
+using Clean.Architecture.Application.Inventory.ReserveInventory;
+using Clean.Architecture.Application.Inventory.GetInventoryItem;
+using Clean.Architecture.Application.Inventory.GetLowStockItems;
 using Microsoft.AspNetCore.Mvc;
-using Shared.Exceptions;
 using Shared.Messaging;
+using Shared.Results;
+using InventoryItemResponse = Clean.Architecture.Application.Inventory.GetInventoryItem.InventoryItemResponse;
+using LowStockItemResponse = Clean.Architecture.Application.Inventory.GetLowStockItems.LowStockItemResponse;
 
 namespace Clean.Architecture.Api.Controllers;
 
@@ -16,15 +18,27 @@ namespace Clean.Architecture.Api.Controllers;
 [Route("api/[controller]")]
 public class InventoryController : ControllerBase
 {
-    private readonly IDispatcher _dispatcher;
+    private readonly IQueryHandler<GetInventoryItemQuery, InventoryItemResponse> _getInventoryItemHandler;
+    private readonly IQueryHandler<GetLowStockItemsQuery, IEnumerable<LowStockItemResponse>> _getLowStockItemsHandler;
+    private readonly ICommandHandler<CreateInventoryItemCommand, Guid> _createInventoryItemHandler;
+    private readonly ICommandHandler<AdjustInventoryStockCommand> _adjustInventoryStockHandler;
+    private readonly ICommandHandler<ReserveInventoryCommand> _reserveInventoryHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InventoryController"/> class.
     /// </summary>
-    /// <param name="dispatcher">The dispatcher.</param>
-    public InventoryController(IDispatcher dispatcher)
+    public InventoryController(
+        IQueryHandler<GetInventoryItemQuery, InventoryItemResponse> getInventoryItemHandler,
+        IQueryHandler<GetLowStockItemsQuery, IEnumerable<LowStockItemResponse>> getLowStockItemsHandler,
+        ICommandHandler<CreateInventoryItemCommand, Guid> createInventoryItemHandler,
+        ICommandHandler<AdjustInventoryStockCommand> adjustInventoryStockHandler,
+        ICommandHandler<ReserveInventoryCommand> reserveInventoryHandler)
     {
-        _dispatcher = dispatcher;
+        _getInventoryItemHandler = getInventoryItemHandler;
+        _getLowStockItemsHandler = getLowStockItemsHandler;
+        _createInventoryItemHandler = createInventoryItemHandler;
+        _adjustInventoryStockHandler = adjustInventoryStockHandler;
+        _reserveInventoryHandler = reserveInventoryHandler;
     }
 
     /// <summary>
@@ -34,20 +48,13 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The inventory item.</returns>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<InventoryItemResponse>> GetInventoryItem(
+    public async Task<ActionResult<Result<InventoryItemResponse>>> GetInventoryItem(
         Guid id,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var query = new GetInventoryItemQuery(id);
-            var result = await _dispatcher.QueryAsync<GetInventoryItemQuery, InventoryItemResponse>(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (DomainException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        var query = new GetInventoryItemQuery(id);
+        var result = await _getInventoryItemHandler.Handle(query, cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -56,19 +63,12 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The collection of low stock items.</returns>
     [HttpGet("low-stock")]
-    public async Task<ActionResult<IEnumerable<LowStockItemResponse>>> GetLowStockItems(
+    public async Task<ActionResult<Result<IEnumerable<LowStockItemResponse>>>> GetLowStockItems(
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var query = new GetLowStockItemsQuery();
-            var result = await _dispatcher.QueryAsync<GetLowStockItemsQuery, IEnumerable<LowStockItemResponse>>(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var query = new GetLowStockItemsQuery();
+        var result = await _getLowStockItemsHandler.Handle(query, cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -78,28 +78,26 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created inventory item identifier.</returns>
     [HttpPost]
-    public async Task<ActionResult<Guid>> CreateInventoryItem(
+    public async Task<ActionResult<Result<Guid>>> CreateInventoryItem(
         [FromBody] CreateInventoryItemRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var command = new CreateInventoryItemCommand(
+            request.ProductSku,
+            request.InitialQuantity,
+            request.MinimumStockLevel);
+
+        var result = await _createInventoryItemHandler.Handle(command, cancellationToken);
+
+        if (result.IsSuccess)
         {
-            var command = new CreateInventoryItemCommand(
-                request.ProductSku,
-                request.InitialQuantity,
-                request.MinimumStockLevel);
-
-            var result = await _dispatcher.CommandAsync<CreateInventoryItemCommand, Guid>(command, cancellationToken);
-
             return CreatedAtAction(
                 nameof(GetInventoryItem),
-                new { id = result },
+                new { id = result.Value },
                 result);
         }
-        catch (DomainException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return result;
     }
 
     /// <summary>
@@ -110,21 +108,20 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the operation.</returns>
     [HttpPatch("{id:guid}/adjust-stock")]
-    public async Task<ActionResult> AdjustInventoryStock(
+    public async Task<ActionResult<Result>> AdjustInventoryStock(
         Guid id,
         [FromBody] AdjustInventoryStockRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var command = new AdjustInventoryStockCommand(id, request.QuantityChange, request.Reason);
+        var result = await _adjustInventoryStockHandler.Handle(command, cancellationToken);
+
+        if (result.IsSuccess)
         {
-            var command = new AdjustInventoryStockCommand(id, request.QuantityChange, request.Reason);
-            await _dispatcher.CommandAsync<AdjustInventoryStockCommand>(command, cancellationToken);
             return NoContent();
         }
-        catch (DomainException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return result;
     }
 
     /// <summary>
@@ -135,21 +132,20 @@ public class InventoryController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the operation.</returns>
     [HttpPost("{id:guid}/reservations")]
-    public async Task<ActionResult> ReserveInventory(
+    public async Task<ActionResult<Result>> ReserveInventory(
         Guid id,
         [FromBody] ReserveInventoryRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var command = new ReserveInventoryCommand(id, request.Quantity, request.ReservationId, request.ExpiresAt);
+        var result = await _reserveInventoryHandler.Handle(command, cancellationToken);
+
+        if (result.IsSuccess)
         {
-            var command = new ReserveInventoryCommand(id, request.Quantity, request.ReservationId, request.ExpiresAt);
-            await _dispatcher.CommandAsync<ReserveInventoryCommand>(command, cancellationToken);
             return NoContent();
         }
-        catch (DomainException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return result;
     }
 }
 

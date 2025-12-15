@@ -6,6 +6,7 @@ using Clean.Architecture.Application.Products.GetAllProducts;
 using Clean.Architecture.Application.Products.GetProductById;
 using Clean.Architecture.Application.Products.UpdateProduct;
 using Shared.Messaging;
+using Shared.Results;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clean.Architecture.Api.Controllers;
@@ -17,15 +18,27 @@ namespace Clean.Architecture.Api.Controllers;
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
-    private readonly IDispatcher _dispatcher;
+    private readonly IQueryHandler<GetAllProductsQuery, IReadOnlyList<ProductDto>> _getAllProductsHandler;
+    private readonly IQueryHandler<GetProductByIdQuery, ProductDto?> _getProductByIdHandler;
+    private readonly ICommandHandler<CreateProductCommand, CreateProductResult> _createProductHandler;
+    private readonly ICommandHandler<UpdateProductCommand, ProductDto> _updateProductHandler;
+    private readonly ICommandHandler<DeleteProductCommand> _deleteProductHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProductsController"/> class.
     /// </summary>
-    /// <param name="dispatcher">The command and query dispatcher.</param>
-    public ProductsController(IDispatcher dispatcher)
+    public ProductsController(
+        IQueryHandler<GetAllProductsQuery, IReadOnlyList<ProductDto>> getAllProductsHandler,
+        IQueryHandler<GetProductByIdQuery, ProductDto?> getProductByIdHandler,
+        ICommandHandler<CreateProductCommand, CreateProductResult> createProductHandler,
+        ICommandHandler<UpdateProductCommand, ProductDto> updateProductHandler,
+        ICommandHandler<DeleteProductCommand> deleteProductHandler)
     {
-        _dispatcher = dispatcher;
+        _getAllProductsHandler = getAllProductsHandler;
+        _getProductByIdHandler = getProductByIdHandler;
+        _createProductHandler = createProductHandler;
+        _updateProductHandler = updateProductHandler;
+        _deleteProductHandler = deleteProductHandler;
     }
 
     /// <summary>
@@ -34,10 +47,10 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of products.</returns>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ProductDto>>> GetAllProducts(CancellationToken cancellationToken)
+    public async Task<ActionResult<Result<IReadOnlyList<ProductDto>>>> GetAllProducts(CancellationToken cancellationToken)
     {
-        var products = await _dispatcher.QueryAsync<GetAllProductsQuery, IReadOnlyList<ProductDto>>(new GetAllProductsQuery(), cancellationToken);
-        return Ok(products);
+        var result = await _getAllProductsHandler.Handle(new GetAllProductsQuery(), cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -47,10 +60,10 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The product.</returns>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ProductDto>> GetProductById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<Result<ProductDto?>>> GetProductById(Guid id, CancellationToken cancellationToken)
     {
-        var product = await _dispatcher.QueryAsync<GetProductByIdQuery, ProductDto?>(new GetProductByIdQuery(id), cancellationToken);
-        return Ok(product);
+        var result = await _getProductByIdHandler.Handle(new GetProductByIdQuery(id), cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -60,7 +73,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created product.</returns>
     [HttpPost]
-    public async Task<ActionResult<CreateProductResult>> CreateProduct(
+    public async Task<ActionResult<Result<CreateProductResult>>> CreateProduct(
         [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken)
     {
@@ -87,12 +100,17 @@ public class ProductsController : ControllerBase
             request.Images,
             request.Tags);
 
-        var result = await _dispatcher.CommandAsync<CreateProductCommand, CreateProductResult>(command, cancellationToken);
+        var result = await _createProductHandler.Handle(command, cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetProductById),
-            new { id = result.Id },
-            result);
+        if (result.IsSuccess)
+        {
+            return CreatedAtAction(
+                nameof(GetProductById),
+                new { id = result.Value.Id },
+                result);
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -103,7 +121,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The updated product.</returns>
     [HttpPut("{id:guid}")]
-    public async Task<ActionResult<ProductDto>> UpdateProduct(
+    public async Task<ActionResult<Result<ProductDto>>> UpdateProduct(
         Guid id,
         [FromBody] UpdateProductRequest request,
         CancellationToken cancellationToken)
@@ -131,9 +149,8 @@ public class ProductsController : ControllerBase
             request.Images,
             request.Tags);
 
-        var result = await _dispatcher.CommandAsync<UpdateProductCommand, ProductDto>(command, cancellationToken);
-
-        return Ok(result);
+        var result = await _updateProductHandler.Handle(command, cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -143,11 +160,17 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>No content on success.</returns>
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> DeleteProduct(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<Result>> DeleteProduct(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteProductCommand(id);
-        await _dispatcher.CommandAsync(command, cancellationToken);
-        return NoContent();
+        var result = await _deleteProductHandler.Handle(command, cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            return NoContent();
+        }
+
+        return result;
     }
 }
 

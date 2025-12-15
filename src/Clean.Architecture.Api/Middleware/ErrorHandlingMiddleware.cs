@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using Shared.Exceptions;
 
 namespace Clean.Architecture.Api.Middleware;
 
@@ -65,9 +64,6 @@ public class ErrorHandlingMiddleware
     {
         return exception switch
         {
-            DomainException domainEx when domainEx.ErrorCode.Contains("NotFound") => HttpStatusCode.NotFound,
-            DomainException domainEx when domainEx.ErrorCode.Contains("Invalid") => HttpStatusCode.BadRequest,
-            DomainException domainEx when domainEx.ErrorCode.Contains("Conflict") => HttpStatusCode.Conflict,
             InvalidOperationException ex when ex.Message.Contains("NotFound") => HttpStatusCode.NotFound,
             InvalidOperationException ex when ex.Message.Contains("Invalid") => HttpStatusCode.BadRequest,
             InvalidOperationException ex when ex.Message.Contains("Conflict") => HttpStatusCode.Conflict,
@@ -91,13 +87,7 @@ public class ErrorHandlingMiddleware
 
     private static (string code, string message) ExtractErrorDetails(Exception exception)
     {
-        // Handle DomainException which has both code and message from your Error objects
-        if (exception is DomainException domainException)
-        {
-            return (domainException.ErrorCode, domainException.ErrorMessage);
-        }
-
-        // Fallback for other exception types (shouldn't happen but just in case)
-        return ("Server.InternalError", "An internal server error occurred.");
+        // Fallback for exception types
+        return ("Server.InternalError", exception.Message);
     }
 }

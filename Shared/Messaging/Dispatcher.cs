@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Primitives;
 using Shared.Results;
-using Shared.Exceptions;
 
 namespace Shared.Messaging
 {
@@ -24,7 +23,7 @@ namespace Shared.Messaging
             var handler = _serviceProvider.GetRequiredService<IQueryHandler<TQuery, TResult>>();
             var result = await handler.Handle(query, cancellationToken);
             if (!result.IsSuccess)
-                throw new DomainException(result.Error ?? new("Query.Failed", "Query failed"));
+                throw new InvalidOperationException(result.Error?.Message ?? "Query failed");
             return result.Value;
         }
 
@@ -34,7 +33,7 @@ namespace Shared.Messaging
             var handler = _serviceProvider.GetRequiredService<ICommandHandler<TCommand>>();
             var result = await handler.Handle(command, cancellationToken);
             if (!result.IsSuccess)
-                throw new DomainException(result.Error ?? new("Command.Failed", "Command failed"));
+                throw new InvalidOperationException(result.Error?.Message ?? "Command failed");
         }
 
         public async Task<TResponse> CommandAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken = default)
@@ -43,7 +42,7 @@ namespace Shared.Messaging
             var handler = _serviceProvider.GetRequiredService<ICommandHandler<TCommand, TResponse>>();
             var result = await handler.Handle(command, cancellationToken);
             if (!result.IsSuccess)
-                throw new DomainException(result.Error ?? new("Command.Failed", "Command failed"));
+                throw new InvalidOperationException(result.Error?.Message ?? "Command failed");
             return result.Value;
         }
 

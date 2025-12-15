@@ -1,45 +1,69 @@
+using Clean.Architecture.Application.Common.Interfaces;
 using Clean.Architecture.Domain.Inventory;
 using Clean.Architecture.Domain.Orders;
+using Microsoft.Extensions.Logging;
 using Shared.Messaging;
 
 namespace Clean.Architecture.Application.Orders.EventHandlers;
 
 /// <summary>
-/// Domain event handler that releases inventory reservations when an order is cancelled.
+/// Handles OrderCancelledDomainEvent to release reserved inventory
 /// </summary>
-internal sealed class OrderCancelledDomainEventHandler : IDomainEventHandler<OrderCancelledDomainEvent>
+public class OrderCancelledDomainEventHandler : IDomainEventHandler<OrderCancelledDomainEvent>
 {
-    private readonly IInventoryItemRepository _inventoryRepository;
+    private readonly IInventoryItemRepository _inventoryItemRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<OrderCancelledDomainEventHandler> _logger;
 
-    public OrderCancelledDomainEventHandler(IInventoryItemRepository inventoryRepository)
+    public OrderCancelledDomainEventHandler(
+        IInventoryItemRepository inventoryItemRepository,
+        IUnitOfWork unitOfWork,
+        ILogger<OrderCancelledDomainEventHandler> logger)
     {
-        _inventoryRepository = inventoryRepository;
+        _inventoryItemRepository = inventoryItemRepository;
+        _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task Handle(OrderCancelledDomainEvent domainEvent, CancellationToken cancellationToken)
     {
-        // Only release reservations if the order was previously confirmed
-        if (domainEvent.PreviousStatus != OrderStatus.Confirmed)
-        {
-            return;
-        }
+        _logger.LogInformation("Handling OrderCancelledDomainEvent for order {OrderId}", domainEvent.OrderId.Value);
 
-        // Release inventory reservations for each order item
-        foreach (var item in domainEvent.Items)
+        try
         {
-            var inventoryItem = await _inventoryRepository.GetByProductSkuAsync(
-                item.ProductSku,
-                cancellationToken);
-
-            if (inventoryItem == null)
+            foreach (var item in domainEvent.Items)
             {
-                continue;
+                var inventoryItem = await _inventoryItemRepository.GetByProductSkuAsync(item.ProductSku, cancellationToken);
+                if (inventoryItem == null)
+                {
+                    _logger.LogWarning("Inventory item not found for product SKU {ProductSku} in cancelled order {OrderId}",
+                        item.ProductSku, domainEvent.OrderId.Value);
+                    continue;
+                }
+
+                // Release the reservation for this order
+                var reservationId = $"ORDER-{domainEvent.OrderId.Value}-{item.ProductSku}";
+
+                try
+                {
+                    inventoryItem.ReleaseReservation(reservationId);
+                    _logger.LogInformation("Released reservation for {Quantity} units of {ProductSku} from cancelled order {OrderId}",
+                        item.Quantity, item.ProductSku, domainEvent.OrderId.Value);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning("Could not release reservation {ReservationId}: {Message}",
+                        reservationId, ex.Message);
+                }
             }
 
-            // Release the reservation using the order ID as reference
-            inventoryItem.ReleaseReservation($"Order-{domainEvent.OrderId.Value}");
-
-            await _inventoryRepository.UpdateAsync(inventoryItem, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Successfully released inventory reservations for cancelled order {OrderId}", domainEvent.OrderId.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to release inventory reservations for cancelled order {OrderId}", domainEvent.OrderId.Value);
+            throw;
         }
     }
 }

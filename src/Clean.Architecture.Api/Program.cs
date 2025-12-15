@@ -1,12 +1,19 @@
 using Clean.Architecture.Persistence;
-using Shared.Extensions;
 using Clean.Architecture.Api.Middleware;
+using Clean.Architecture.Api.Filters;
 using Scalar.AspNetCore;
+using Shared.Messaging;
+using Clean.Architecture.Application.Products;
+using Clean.Architecture.Application.Orders;
+using Clean.Architecture.Application.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ResultActionFilter>();
+});
 builder.Services.AddOpenApi();
 
 // Add CORS
@@ -21,8 +28,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add CQRS - register handlers from Application assembly
-builder.Services.AddCqrs(typeof(Clean.Architecture.Application.Products.CreateProduct.CreateProductCommand).Assembly);
+// Register Domain Event Publisher
+builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
+
+// Register Features
+builder.Services.AddProducts();
+builder.Services.AddOrders();
+builder.Services.AddInventory();
 
 // Add Persistence layer
 builder.Services.AddPersistence();
